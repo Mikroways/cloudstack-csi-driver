@@ -87,7 +87,7 @@ func (m *mounter) GetDevicePath(ctx context.Context, volumeID string) (string, e
 
 	var devicePath string
 	err := wait.ExponentialBackoffWithContext(ctx, backoff, func(context.Context) (bool, error) {
-		path, err := m.getDevicePathBySerialID(volumeID)
+		path, err := m.getDevicePathBySerialID(volumeID, ctx)
 		if err != nil {
 			return false, err
 		}
@@ -110,7 +110,8 @@ func (m *mounter) GetDevicePath(ctx context.Context, volumeID string) (string, e
 	return devicePath, nil
 }
 
-func (m *mounter) getDevicePathBySerialID(volumeID string) (string, error) {
+func (m *mounter) getDevicePathBySerialID(volumeID string, ctx context.Context) (string, error) {
+	logger := klog.FromContext(ctx)
 	sourcePathPrefixes := []string{"virtio-", "scsi-", "scsi-0QEMU_QEMU_HARDDISK_",
 		"scsi-0",
 		"scsi-1",
@@ -123,10 +124,12 @@ func (m *mounter) getDevicePathBySerialID(volumeID string) (string, error) {
 		"scsi-8",
 		"scsi-9",
 	}
-	serial := diskUUIDToSerial(volumeID)
+	serial := strings.ReplaceAll(volumeID, "-", "")
+	logger.V(2).Info("Called getDevicePathBySerialID for volume ", volumeID)
 	for _, prefix := range sourcePathPrefixes {
 		source := filepath.Join(diskIDPath, prefix+serial)
 		_, err := os.Stat(source)
+		logger.V(2).Info("--> ", source)
 		if err == nil {
 			return source, nil
 		}
