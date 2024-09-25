@@ -113,7 +113,7 @@ func (ns *nodeServer) NodeStageVolume(ctx context.Context, req *csi.NodeStageVol
 	defer ns.volumeLocks.Release(volumeID)
 
 	// Now, find the device path
-	source, err := ns.mounter.GetDevicePath(ctx, volumeID)
+	source, err := GetDevicePath(ns, ctx, volumeID)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "Cannot find device path for volume %s: %s", volumeID, err.Error())
 	}
@@ -373,7 +373,7 @@ func (ns *nodeServer) NodePublishVolume(ctx context.Context, req *csi.NodePublis
 			return nil, status.Errorf(codes.Internal, "failed to mount %q at %q: %v", source, target, err)
 		}
 	case *csi.VolumeCapability_Block:
-		source, err := ns.mounter.GetDevicePath(ctx, volumeID)
+		source, err := GetDevicePath(ns, ctx, volumeID)
 		if err != nil {
 			return nil, status.Errorf(codes.Internal, "Cannot find device path for volume %s: %v", volumeID, err)
 		}
@@ -558,7 +558,7 @@ func (ns *nodeServer) NodeExpandVolume(ctx context.Context, req *csi.NodeExpandV
 		return nil, status.Error(codes.Internal, fmt.Sprintf("NodeExpandVolume failed with error %v", err))
 	}
 
-	devicePath, err := ns.mounter.GetDevicePath(ctx, volumeID)
+	devicePath, err := GetDevicePath(ns, ctx, volumeID)
 	if devicePath == "" {
 		return nil, status.Error(codes.Internal, fmt.Sprintf("Unable to find Device path for volume %s: %v", volumeID, err))
 	}
@@ -680,4 +680,16 @@ func (ns *nodeServer) NodeGetCapabilities(_ context.Context, _ *csi.NodeGetCapab
 	}
 
 	return resp, nil
+}
+
+func GetDevicePath(ns *nodeServer, ctx context.Context, volumeID string) (string, error) {
+	source, err := ns.mounter.GetDevicePath(ctx, volumeID)
+	if err != nil {
+		vol, getVolErr := ns.connector.GetVolumeByID(ctx, volumeID)
+		if getVolErr != nil {
+			return "", status.Errorf(codes.Internal, "Cannot find volume with id %s: %s", volumeID, err.Error())
+		}
+		return ns.mounter.GetDevicePath(ctx, vol.ExternalUUID)
+	}
+	return source, err
 }

@@ -31,6 +31,7 @@ func (c *client) listVolumes(p *cloudstack.ListVolumesParams) (*Volume, error) {
 		DiskOfferingID:   vol.Diskofferingid,
 		ZoneID:           vol.Zoneid,
 		VirtualMachineID: vol.Virtualmachineid,
+		ExternalUUID:     vol.Externaluuid,
 		DeviceID:         strconv.FormatInt(vol.Deviceid, 10),
 	}
 

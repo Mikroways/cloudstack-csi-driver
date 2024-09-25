@@ -38,6 +38,7 @@ type Volume struct {
 
 	VirtualMachineID string
 	DeviceID         string
+	ExternalUUID     string
 }
 
 // VM represents a CloudStack Virtual Machine.
