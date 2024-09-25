@@ -14,6 +14,7 @@ RUN apk add --no-cache \
     # blkid, mount and umount are required by k8s.io/mount-utils \
     blkid \
     mount \
+    eudev \
     umount
 
 COPY ./bin/cloudstack-csi-driver /cloudstack-csi-driver
