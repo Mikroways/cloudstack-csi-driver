@@ -31,7 +31,7 @@ func (m *fakeMounter) GetBlockSizeBytes(_ string) (int64, error) {
 	return 1073741824, nil
 }
 
-func (m *fakeMounter) GetDevicePath(_ context.Context, _ string) (string, error) {
+func (m *fakeMounter) GetDevicePath(_ context.Context, _ string, _ bool) (string, error) {
 	return "/dev/sdb", nil
 }
 

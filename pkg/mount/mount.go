@@ -30,7 +30,7 @@ type Interface interface { //nolint:interfacebloat
 
 	FormatAndMount(source string, target string, fstype string, options []string) error
 	GetBlockSizeBytes(devicePath string) (int64, error)
-	GetDevicePath(ctx context.Context, volumeID string) (string, error)
+	GetDevicePath(ctx context.Context, volumeID string, isVMWare bool) (string, error)
 	GetDeviceName(mountPath string) (string, int, error)
 	GetStatistics(volumePath string) (volumeStatistics, error)
 	IsBlockDevice(devicePath string) (bool, error)
@@ -78,7 +78,7 @@ func (m *mounter) GetBlockSizeBytes(devicePath string) (int64, error) {
 	return gotSizeBytes, nil
 }
 
-func (m *mounter) GetDevicePath(ctx context.Context, volumeID string) (string, error) {
+func (m *mounter) GetDevicePath(ctx context.Context, volumeID string, isVMWare bool) (string, error) {
 	backoff := wait.Backoff{
 		Duration: 1 * time.Second,
 		Factor:   1.1,
@@ -87,7 +87,13 @@ func (m *mounter) GetDevicePath(ctx context.Context, volumeID string) (string, e
 
 	var devicePath string
 	err := wait.ExponentialBackoffWithContext(ctx, backoff, func(context.Context) (bool, error) {
-		path, err := m.getDevicePathBySerialID(volumeID)
+		var err error
+		var path string
+		if isVMWare {
+			path, err = m.getVMWareDevicePathBySerialID(volumeID, ctx)
+		} else {
+			path, err = m.getDevicePathBySerialID(volumeID, ctx)
+		}
 		if err != nil {
 			return false, err
 		}
@@ -110,23 +116,34 @@ func (m *mounter) GetDevicePath(ctx context.Context, volumeID string) (string, e
 	return devicePath, nil
 }
 
-func (m *mounter) getDevicePathBySerialID(volumeID string) (string, error) {
-	sourcePathPrefixes := []string{"virtio-", "scsi-", "scsi-0QEMU_QEMU_HARDDISK_",
-		"scsi-0",
-		"scsi-1",
-		"scsi-2",
-		"scsi-3",
-		"scsi-4",
-		"scsi-5",
-		"scsi-6",
-		"scsi-7",
-		"scsi-8",
-		"scsi-9",
-	}
+func (m *mounter) getDevicePathBySerialID(volumeID string, ctx context.Context) (string, error) {
+	logger := klog.FromContext(ctx)
+	sourcePathPrefixes := []string{"virtio-", "scsi-", "scsi-0QEMU_QEMU_HARDDISK_"}
 	serial := diskUUIDToSerial(volumeID)
 	for _, prefix := range sourcePathPrefixes {
 		source := filepath.Join(diskIDPath, prefix+serial)
 		_, err := os.Stat(source)
+		logger.V(2).Info("Trying to open ", source)
+		if err == nil {
+			return source, nil
+		}
+		if !os.IsNotExist(err) {
+			return "", err
+		}
+	}
+
+	return "", nil
+}
+
+func (m *mounter) getVMWareDevicePathBySerialID(volumeID string, ctx context.Context) (string, error) {
+	logger := klog.FromContext(ctx)
+	sourcePathPrefixes := []string{"scsi-0", "scsi-1", "scsi-2", "scsi-3",
+		"scsi-4", "scsi-5", "scsi-6", "scsi-7", "scsi-8", "scsi-9"}
+	serial := strings.ToLower(strings.ReplaceAll(volumeID, "-", ""))
+	for _, prefix := range sourcePathPrefixes {
+		source := filepath.Join(diskIDPath, prefix+serial)
+		_, err := os.Stat(source)
+		logger.V(2).Info("Trying to open ", source)
 		if err == nil {
 			return source, nil
 		}

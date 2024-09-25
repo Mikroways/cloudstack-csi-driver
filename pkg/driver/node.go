@@ -683,13 +683,17 @@ func (ns *nodeServer) NodeGetCapabilities(_ context.Context, _ *csi.NodeGetCapab
 }
 
 func GetDevicePath(ns *nodeServer, ctx context.Context, volumeID string) (string, error) {
-	source, err := ns.mounter.GetDevicePath(ctx, volumeID)
-	if err != nil {
-		vol, getVolErr := ns.connector.GetVolumeByID(ctx, volumeID)
-		if getVolErr != nil {
-			return "", status.Errorf(codes.Internal, "Cannot find volume with id %s: %s", volumeID, err.Error())
+	vm, err := ns.connector.GetNodeInfo(ctx, ns.nodeName)
+	if err == nil {
+		if strings.EqualFold(vm.Hypervisor, "VMWARE") {
+			vol, getVolErr := ns.connector.GetVolumeByID(ctx, volumeID)
+			if getVolErr != nil {
+				return "", status.Errorf(codes.Internal, "Cannot find VMWare volume with id %s: %s", volumeID, getVolErr.Error())
+			}
+			return ns.mounter.GetDevicePath(ctx, vol.ExternalUUID, true)
+		} else {
+			return ns.mounter.GetDevicePath(ctx, volumeID, false)
 		}
-		return ns.mounter.GetDevicePath(ctx, vol.ExternalUUID)
 	}
-	return source, err
+	return "", err
 }

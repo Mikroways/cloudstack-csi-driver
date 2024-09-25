@@ -43,8 +43,9 @@ type Volume struct {
 
 // VM represents a CloudStack Virtual Machine.
 type VM struct {
-	ID     string
-	ZoneID string
+	ID         string
+	ZoneID     string
+	Hypervisor string
 }
 
 // Specific errors.
