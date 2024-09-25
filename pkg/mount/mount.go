@@ -124,7 +124,7 @@ func (m *mounter) getDevicePathBySerialID(volumeID string, ctx context.Context) 
 		"scsi-8",
 		"scsi-9",
 	}
-	serial := strings.ReplaceAll(volumeID, "-", "")
+	serial := strings.ReplaceAll(volumeID, "-", "").ToLower()
 	logger.V(2).Info("Called getDevicePathBySerialID for volume ", volumeID)
 	for _, prefix := range sourcePathPrefixes {
 		source := filepath.Join(diskIDPath, prefix+serial)
