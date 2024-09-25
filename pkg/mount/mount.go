@@ -111,7 +111,18 @@ func (m *mounter) GetDevicePath(ctx context.Context, volumeID string) (string, e
 }
 
 func (m *mounter) getDevicePathBySerialID(volumeID string) (string, error) {
-	sourcePathPrefixes := []string{"virtio-", "scsi-", "scsi-0QEMU_QEMU_HARDDISK_"}
+	sourcePathPrefixes := []string{"virtio-", "scsi-", "scsi-0QEMU_QEMU_HARDDISK_",
+		"scsi-0",
+		"scsi-1",
+		"scsi-2",
+		"scsi-3",
+		"scsi-4",
+		"scsi-5",
+		"scsi-6",
+		"scsi-7",
+		"scsi-8",
+		"scsi-9",
+	}
 	serial := diskUUIDToSerial(volumeID)
 	for _, prefix := range sourcePathPrefixes {
 		source := filepath.Join(diskIDPath, prefix+serial)
